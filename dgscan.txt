@@ -1,0 +1,261 @@
+                          DGSCANS Version 3.00
+                          ====================
+
+                            By Dave Pearson
+                            ===============
+
+==========
+What it is
+==========
+
+        DGScan is a simple little command line utility that will scan your
+        Clipper 5.x oriented OBJ and LIB files and produce a report of their
+        usage of Clipper's DGROUP.
+
+        DGScan will work with and has been tested on C, ASM and Clipper OBJ
+        and LIB files.
+
+	Please also note that DGScan is free software, protected by the 
+	GPL. Please read the file COPYING for full details.
+
+=============
+What it isn't
+=============
+
+        DGScan can't currently tell you who is using what DGROUP in your
+        application. All it can do is detect possible DGROUP impact in any
+        OBJ or LIB file. At some point in the future I aim to either expand
+        DGScan or develop a new utility that will scan your application
+        and tell you exactly who is using what parts of DGROUP.
+
+        For the moment DGScan is a tool to help you work out what could
+        be using DGROUP. When scanning 3rd party library files keep in
+        mind that you probably don't make use of all the functions so
+        you probably don't link in all the modules. On the other hand it's
+        not easy to know what modules the library file uses internaly.
+
+=============
+How to use it
+=============
+
+        The syntax is as follows:
+
+                DGScan [<Switches>] <FileSpec> | @<ScriptFile> [<Switches>]
+
+        where <FileSpec> is the name of a single OBJ or LIB file or a wildcard
+        file spec for a number of OBJ or LIB files. Example usage:
+
+                DGScan main.obj       // Scan a single OBJ file.
+                DGScan *.obj          // Scan all OBJ files.
+                DGScan clipper.lib    // Scan a library file.
+                DGScan *.lib          // Scan all library files.
+
+        etc.
+
+        As an alternative you can use a "script" file. This file should
+        contain the names of files that you want to scan, each file
+        on it's own line. The name of the file should start on the
+        first column, any lines that start with either a space or
+        a ';' are considered to be comments. Blank lines are allowed.
+
+        Example usage of a script file is:
+
+                DGScan @CCode.Lst
+
+        The switches are as follows:
+
+                /S - Ignore Clipper static variables.
+                     If used this switch tells DGScan not to include
+                     Clipper static variables in the scan.
+                /T - Totals only.
+                     If used this switch tells DGScan to only display
+                     the total usage.
+                /Q - Quiet.
+                     If used this switch stops DGScan from showing
+                     it's "banner".
+
+        All of the above switches can also be placed inside an environment
+        variable called DGScan. So, if you want DGScan to ignore Clipper
+        static variables and only display totals by default you would:
+
+                Set DGScan=/s/t
+
+================
+Format of output
+================
+
+        DGScan writes a simple report to the screen, this can be redirected
+        to a file using standard DOS redirection. The format of the report
+        is:
+
+        File-------- Module------------------------ Segment-------- Bytes-----
+        <FileName>  <ModuleName>                    <SegmentName>   <Usage>
+
+        where:    <FileName> is the name of the OBJ or LIB file.
+                <ModuleName> is the name of the module in the OBJ or LIB file.
+               <SegmentName> is the name of the segment that us using DGROUP.
+                     <Usage> is the number of bytes of DGROUP in use.
+
+        An example report is:
+
+        File-------- Module------------------------ Segment-------- Bytes-----
+        FLOPNAME.OBJ flopname.c                     _DATA                    4
+        FLOPNAME.OBJ *** Total ***                                           4
+
+        If more than one file is scanned then a grand total will also be
+        displayed.
+
+================
+What to look for
+================
+
+        The first and most obvious thing to look for is the segment name
+        STATICS$ for Clipper compiled code. If the byte figure is high
+        you may want to consider reducing the number of statics in a
+        file. The number of bytes is calculated based on the fact that
+        a single Clipper static variable will have a 14 byte impact on
+        DGROUP.
+
+        If you have, for example, ten file wide static variables in a
+        PRG file you may consider storing the ten items in an array
+        held in a single static. With such an example the DGROUP impact
+        would be reduced from 140 bytes to just 14 bytes.
+
+        With C code you will probably know yourself what the "problem" areas
+        are. Obvious things to watch out for are hard coded strings in a
+        C function, for example:
+
+                _retc( "" );
+
+        will have a one byte impact on DGROUP (the segment will probably show
+        up as _DATA), you could get rid of this with a simple:
+
+                char *p = { 0 };
+
+                _retc( p );
+
+        Other things to look out for are static variables (the segment
+        will probably be _BSS), but I would assume that you have placed
+        them there for a reason.
+
+        To a large extent when it comes to C and ASM code you are kind of
+        on your own because the segment names etc. may differ from compiler
+        to compiler or you mave have given them your own names.
+
+===========
+ErrorLevels
+===========
+
+        Just in case you ever wanted to have DGROUP detection in your
+        Compile batch file/make file DGScan will return an ErrorLevel
+        of 1 if any DGROUP impact is found in a scan and 0 if none is
+        found.
+
+        I doubt that this will be of any use but its there if you need it.
+
+============
+OS/2 Support
+============
+
+        Used to exist, but no longer. Since I added more memory to my
+        machine OS/2 has refused to play ball. Dos, Windows, Win95
+        and Linux are all happy, only OS/2 won't play. :-(
+
+        Perhaps Merlin will be better. :-)
+
+        If you still want to run under OS/2, you have the source.
+
+===========
+The History
+===========
+
+   Release  Date      Reason
+   ======== ========  ====================================================
+   1.00.0   23/11/94  First version, release to DBSL for testing. Had no
+                      library file support and had trouble with unknown
+                      record IDs.
+   1.00.1   24/11/94  Added support for library files by ignoring unknown
+                      record IDs.
+                      Changed the memory model to large. Without this the
+                      utility would die when reading large library files.
+                      Added support for Clipper Static variables.
+                      Re-wrote the output so that it is now a proper
+                      report of sorts.
+   1.00.2   25/11/94  Added code to ignore _SYMP segment entries. Because
+                      of this DGScan will now show you DGROUP usage that
+                      you can affect in your own code (you can do nothing
+                      about the usage of the _SYMP segment).
+                      Changed the way we calculate the impact of C and
+                      ASM code. We can now detect static variables in
+                      C and ASM files whereas before they were not
+                      included in the calculation.
+   1.01.0   02/12/94  Added a verbose mode switch to the command line that
+                      causes all segments to be displayed in the report.
+   1.02.0   05/12/94  Fixed a stupid bug that caused DGScan to ignore
+                      DGROUP usage from time to time. This was a side
+                      effect of the Verbose switch of all things! Thanks
+                      for finding that one Ian.
+   1.03.0   06/12/94  Fixed a stupid memory allocation bug that caused
+                      strange results on Ian Day's machine. <g>
+                      Also added errorlevel support. If DGROUP usage is
+                      found in a scan then an errorlevel of 1 is returned,
+                      otherwise an errorlevel of 0 is returned,
+                      Also added support for "Script" files.
+   1.04.0   08/12/94  Fixed a strange bug found by Ian Day.
+                      Also removed the verbose switch because of incorrect
+                      user expectations. There was little need for it in
+                      the first place.
+   1.05.0   13/12/94  Far better library scanning. This should have correctly
+                      fixed a couple of the previous bugs found by Ian and
+                      should also make the scanning of some library files
+                      a bit faster.
+   1.06.0   15/12/94  Long module and segment names will no-longer screw up
+                      the format of the report.
+   1.07.0   23/12/94  Added the /S and /T command line switches.
+                      If the filename on the command line has no extension
+                      DGScan will now look for <File>.OBJ then <File>.LIB.
+   1.08.0   28/12/94  Added the /Q switch.
+                      Added support for switches in an environment variable
+                      called DGScan.
+                      Fixed another silly bug that would cause DGScan to
+                      miss some DGROUP usage.
+                      Included BLIDGRP.
+   2.00.0   01/03/95  Changed into Dos and OS/2 versions. Also changed the
+                      name of the .EXE 'cos I got fed up with typing such
+                      a long name. ;-)
+   2.00.1   22/03/95  Got rid of DGSCAN2.EXE. DGSCAN.EXE is now a bound
+                      executable. Also dropped support for BLIDGRP, it
+                      was a pointless idea in the first place. <g>
+   3.00.0   18/07/96  Finally got round to sorting things out so that
+                      I can release the source code. DgScan is now
+                      placed under the GPL.
+
+========
+Feedback
+========
+
+        If you have any comments or problems with DGScan you may mail me
+        at davep@hagbard.demon.co.uk. Also, you can allways find the
+        latest version of this utility at:
+
+                http://www.acemake.com/hagbard
+
+        Any feedback would be great so just fire away.....
+
+==========
+Many Thanx
+==========
+
+        Many thanx must go to Ian Day who showed me how to calculate the
+        number of Clipper static variables from information found in a
+        Clipper OBJ file and also managed to find that one extra library that
+        would break the scanner each time I was happy that it was working
+        fine. Thanx also to Darren Lancaster who let me pester Ian when he
+        had better things to be doing with his time and Brian Dukes and Stu
+        Beesley for testing this utility.
+
+        Thanx must also go to Kip Davidson and Dave Cortesi, two guys I've
+        never met or spoken to but who wrote a utility called READOBJ, the
+        code for this utility helped me understand the format of OBJ files.
+
+        __DavePearson()
